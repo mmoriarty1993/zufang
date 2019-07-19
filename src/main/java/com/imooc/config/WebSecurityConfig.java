@@ -1,5 +1,11 @@
 package com.imooc.config;
 
+import com.imooc.security.AuthProvider;
+import com.imooc.security.LoginAuthFailHandler;
+import com.imooc.security.LoginUrlEntryPoint;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -25,8 +31,46 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/api/user/**").hasAnyRole("ADMIN","USER")//
                 .and()
                 .formLogin()
-                .loginProcessingUrl("/login")//角色登陆入口界面
-                .and();
-        super.configure(http);
+                .loginProcessingUrl("/login")//角色登陆处理入口
+                .failureHandler(authFailHandler())//验证失败处理器
+                .and()
+                .logout()
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/logout/page")
+                .deleteCookies("JSESSIONID")
+                .invalidateHttpSession(true)
+                .and()
+                .exceptionHandling()
+                .authenticationEntryPoint(urlEntryPoint())
+                .accessDeniedPage("/403").and();
+
+        http.csrf().disable();
+        http.headers().frameOptions().sameOrigin();
+    }
+//    /**
+//     * 自定义内存认证策略
+//     */
+//    @Autowired
+//    public void configGlobal(AuthenticationManagerBuilder auth) throws Exception {
+//        auth.inMemoryAuthentication().withUser("admin").password("admin").roles("ADMIN").and();
+//    }
+        @Autowired
+    public void configGlobal(AuthenticationManagerBuilder auth){
+        auth.authenticationProvider(authProvider()).eraseCredentials(true);
+        }
+
+    @Bean
+    public AuthProvider authProvider(){
+        return new AuthProvider();
+    }
+
+    @Bean
+    public LoginUrlEntryPoint urlEntryPoint(){
+        return new LoginUrlEntryPoint("/user/login");
+    }
+
+    @Bean
+    public LoginAuthFailHandler authFailHandler(){
+        return new LoginAuthFailHandler(urlEntryPoint());
     }
 }
